@@ -1,6 +1,5 @@
 import os
 import random
-import time
 
 MAX_LETTERS = 26
 FIRST_ASCII_LETTER_INDEX = 65
