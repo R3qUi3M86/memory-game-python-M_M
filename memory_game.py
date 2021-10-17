@@ -1,7 +1,7 @@
 import os
 import random
+import time
 
-#alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 MAX_LETTERS = 26
 FIRST_ASCII_LETTER_INDEX = 65
 LAST_ASCII_LETTER_INDEX = 90
@@ -9,6 +9,10 @@ MAX_BOARD_SIZE = 52
 ALPHABET = "ABCDEFGHIJKLMNOPQRSTUWVYXZ"
 column_list = []
 row_list = []
+discovered_letters = []
+found_letters = []
+previous_move = -1, -1
+current_move = -1, -1
 
 
 # clears the screen
@@ -18,44 +22,127 @@ def console_clear():
         command = 'cls'
     os.system(command)
 
-def main():
+def reset_game_parameters():
+    global discovered_letters
+    global found_letters
+    global previous_move
+    global current_move
+
+    discovered_letters = []
+    found_letters = []
+    previous_move = -1, -1
+    current_move = -1, -1
+
+def play_game():
+    global current_move
+    global discovered_letters
+    global previous_move
+    global current_move
+
     width = 2
-    height = 9
+    height = 2
     board = generate_board(height, width)
-    for i in range(height):
-        print(board[i])
-    print(get_user_move(height))
+    moves = 0
     
+    reset_game_parameters()
 
-def generate_board(height, width):
-    global column_list
-    global row_list
+    while len(found_letters) < ((height * width) // 2):
+        console_clear()
+        print_board(board)
 
+        previous_move = current_move
+        user_move = 0,0
+        
+        if len(discovered_letters) < 2:
+            moves += 1
+            while True:
+                user_move = get_user_move(height, board)
+                if check_valid_move(board, user_move) == False:
+                    continue
+                else:
+                    discover_letter(board, user_move)
+                    current_move = user_move
+                    break
+            
+        else:
+            input("Press Enter to continue...")
+            discovered_letters = []
+            current_move = -1, -1
+            previous_move = -1, -1
+
+    endgame(board, moves)
+
+def playagain_prompt():
+    while True:
+        user_input = input("Would you like to play again?(y/n): ")
+        
+        if user_input.lower() == "y":
+            play_game()
+        elif user_input.lower() == "n" or user_input.lower() == "quit":
+            exit()
+
+
+def endgame(board, moves):
+    console_clear()
+    print_board(board)
+    print(f"\nYou won! It took you {moves} moves to find all letters!")
+    playagain_prompt()      
+        
+
+def discover_letter(board, user_move):
+    global discovered_letters
+    global found_letters
+
+    discovered_letters.append(board[user_move[1]][user_move[0]])
+
+    if len(discovered_letters) == 2 and discovered_letters[1] == discovered_letters[0]:
+        found_letters.append(board[user_move[1]][user_move[0]])
+
+            
+
+def check_valid_move(board, user_move):
+    if board[user_move[1]][user_move[0]] in found_letters or user_move == previous_move:
+        return False
+    else:
+        return True
+
+def check_for_value_error(height, width):
     if (height * width) > MAX_BOARD_SIZE:
         raise ValueError("Board is too large")
     elif (height * width) % 2 != 0:
         raise ValueError("Board size is odd number")
-    
+
+def generate_row_col_lists(height, width):
+    global column_list
+    global row_list
+
+    column_list = []
     for i in range(height):
         row_list.append(i+1)
 
     for i in range(width):
         column_list.append(chr(i+FIRST_ASCII_LETTER_INDEX))
 
-
-    board = [['']*width for _ in range(height)] #list comprehension
+def generate_picked_letter_list(height, width):
     picked_letter_list = []
     ammount_of_unique_letter = (height * width) // 2
-
 
     for i in range(ammount_of_unique_letter):
         picked_letter_list.append(ALPHABET[i])
 
     picked_letter_list = picked_letter_list * 2
     random.shuffle(picked_letter_list)
+    return picked_letter_list
+
+def generate_board(height, width):
+    check_for_value_error(height, width)
+    generate_row_col_lists(height, width)
+
+    board = [['']*width for _ in range(height)] #list comprehension
+    
+    picked_letter_list = generate_picked_letter_list(height, width)
 
     letter_index = 0
-
     for row in range(height):
         for col in range(width):
             board[row][col] = picked_letter_list[letter_index]
@@ -63,25 +150,44 @@ def generate_board(height, width):
 
     return board
 
-#def print_board
+def print_board(board):
+    column_display = "  "
 
-def get_user_input(height):
+    for col in column_list:
+        column_display += col+" "
+    print(column_display)
+
+    for row in range(len(board)):
+        row_display = str(row+1)
+        for col in range(len(board[row])):
+            cell_char = board[row][col]
+            if cell_char in found_letters:
+                row_display += " " + cell_char
+            elif (row == current_move[1] and col == current_move[0]) or (row == previous_move[1] and col == previous_move[0]):
+                row_display += " " + cell_char
+            elif cell_char not in found_letters:
+                row_display += " #"
+        print(row_display)
+
+
+
+def get_user_input(height, board):
     while True:
-        #console_clear()
-        #print_board(board)
+        console_clear()
+        print_board(board)
         user_inp = input("What is your move?\n(example: A1)\n\n")
         
         if user_inp == "quit":
             exit()
         elif len(user_inp) == 2 or len(user_inp) == 3:
             if len(user_inp) == 3 and height < 10:
-                print("Invalid input")
+                continue
             else:
                 return user_inp
 
-def get_user_move(height):
+def get_user_move(height, board):
     while True:
-        user_input = get_user_input(height)
+        user_input = get_user_input(height, board)
         input_char_list = list(user_input)
         
         if input_char_list[0].upper() in column_list:
@@ -96,10 +202,10 @@ def get_user_move(height):
             elif input_char_list[1].isdigit() and int(input_char_list[1]) in row_list:
                 input_height = int(input_char_list[1])
                 return input_width, input_height-1
-        print("Invalid input")
+        #print("Invalid input")
             
 
 
 
 if __name__ == "__main__":
-    main()
+    play_game()
